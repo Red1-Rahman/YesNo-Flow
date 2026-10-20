@@ -3,25 +3,29 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { RunStateSchema, type RunState } from "@/lib/schemas/run"
 
-const POLL_INTERVAL_MS = 700
+const BASE_POLL_INTERVAL_MS = 700
+const MAX_BACKOFF_MS = 5600
 
 const isTerminal = (status: RunState["status"]) =>
   status === "succeeded" || status === "failed"
 
 export type RunPolling = {
   run: RunState | null
-  error: string | null
+  /** True when polling cannot reach the server; cleared on the next success. */
+  connectionLost: boolean
   startPolling: (runId: string) => void
   stopPolling: () => void
 }
 
 /**
  * Poll GET /api/runs/:runId every 700 ms until the run reaches a terminal
- * status or polling is stopped / the component unmounts.
+ * status or polling is stopped / the component unmounts. Failures back off
+ * exponentially (700 ms, 1.4 s, 2.8 s, 5.6 s) and surface `connectionLost`
+ * instead of crashing.
  */
 export function useRunPolling(): RunPolling {
   const [run, setRun] = useState<RunState | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [connectionLost, setConnectionLost] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const runIdRef = useRef<string | null>(null)
 
@@ -35,8 +39,10 @@ export function useRunPolling(): RunPolling {
 
   useEffect(() => stopPolling, [stopPolling])
 
-  const poll = useCallback(async (runId: string) => {
+  const poll = useCallback(async (runId: string, failures: number) => {
     if (runIdRef.current !== runId) return
+    let delay = BASE_POLL_INTERVAL_MS
+    let failed = false
     try {
       const response = await fetch(`/api/runs/${runId}`)
       if (!response.ok) {
@@ -49,18 +55,22 @@ export function useRunPolling(): RunPolling {
       }
       if (runIdRef.current !== runId) return
       setRun(parsed.data)
-      setError(null)
+      setConnectionLost(false)
       if (isTerminal(parsed.data.status)) {
         runIdRef.current = null
         return
       }
     } catch {
       if (runIdRef.current !== runId) return
-      // Keep polling through transient failures; surface a generic message.
-      setError("Lost connection to the run state.")
+      // Keep polling through transient failures with exponential backoff and
+      // surface a generic message; never crash the panel.
+      failed = true
+      delay = Math.min(BASE_POLL_INTERVAL_MS * 2 ** (failures + 1), MAX_BACKOFF_MS)
+      setConnectionLost(true)
     }
     if (runIdRef.current === runId) {
-      timerRef.current = setTimeout(() => void poll(runId), POLL_INTERVAL_MS)
+      const nextFailures = failed ? Math.min(failures + 1, 4) : 0
+      timerRef.current = setTimeout(() => void poll(runId, nextFailures), delay)
     }
   }, [])
 
@@ -68,12 +78,12 @@ export function useRunPolling(): RunPolling {
     (runId: string) => {
       stopPolling()
       setRun(null)
-      setError(null)
+      setConnectionLost(false)
       runIdRef.current = runId
-      void poll(runId)
+      void poll(runId, 0)
     },
     [poll, stopPolling],
   )
 
-  return { run, error, startPolling, stopPolling }
+  return { run, connectionLost, startPolling, stopPolling }
 }

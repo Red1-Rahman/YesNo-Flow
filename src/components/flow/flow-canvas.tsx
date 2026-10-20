@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback } from "react"
+import { useCallback, useMemo } from "react"
 import {
   Background,
   Controls,
@@ -9,22 +9,66 @@ import {
   type NodeMouseHandler,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
+import {
+  deriveEdgeStates,
+  deriveNodeStates,
+  type NodeVisualState,
+} from "@/lib/graph/derive-visual-state"
+import type { RunState } from "@/lib/schemas/run"
 import type { BranchEdge, DecisionNode } from "@/lib/types"
 import { useWorkflowStore } from "@/store/workflow-store"
-import { Toolbar } from "../toolbar"
 import { BranchEdgeView } from "./branch-edge"
 import { DecisionNodeView } from "./decision-node"
 import { NodeEditor } from "./node-editor"
+import { Toolbar } from "./toolbar"
 
 const nodeTypes = { decision: DecisionNodeView }
 const edgeTypes = { yes: BranchEdgeView, no: BranchEdgeView }
 
-export const FlowCanvas = () => {
+export type FlowCanvasProps = {
+  run: RunState | null
+}
+
+export const FlowCanvas = ({ run }: FlowCanvasProps) => {
   const workflow = useWorkflowStore((state) => state.workflow)
   const addEdge = useWorkflowStore((state) => state.addEdge)
   const setSelectedNodeId = useWorkflowStore((state) => state.setSelectedNodeId)
+  const selectedNodeId = useWorkflowStore((state) => state.selectedNodeId)
   const onNodesChange = useWorkflowStore((state) => state.applyNodeChanges)
   const onEdgesChange = useWorkflowStore((state) => state.applyEdgeChanges)
+
+  // Visual state is derived from the run and merged into a display copy of
+  // the graph. The stored workflow is never mutated by execution.
+  const nodeStates = useMemo(() => deriveNodeStates(run), [run])
+  const edgeStates = useMemo(() => deriveEdgeStates(workflow, run), [workflow, run])
+
+  const displayNodes = useMemo(
+    () =>
+      workflow.nodes.map((node) => ({
+        ...node,
+        // Reflect the store's selection so a node selected from the logs panel
+        // (not just by clicking the canvas) shows the same ring.
+        selected: node.id === selectedNodeId,
+        data: {
+          ...node.data,
+          visualState: (nodeStates[node.id] ?? "idle") as NodeVisualState,
+        },
+      })),
+    [workflow.nodes, nodeStates, selectedNodeId],
+  )
+
+  const displayEdges = useMemo(
+    () =>
+      workflow.edges.map((edge) => {
+        const state = edgeStates[edge.id] ?? "idle"
+        return {
+          ...edge,
+          animated: state === "active",
+          data: { visualState: state },
+        }
+      }),
+    [workflow.edges, edgeStates],
+  )
 
   const onConnect = useCallback((connection: Connection) => addEdge(connection), [addEdge])
   const isValidConnection = useCallback((connection: Connection | BranchEdge) => {
@@ -37,8 +81,8 @@ export const FlowCanvas = () => {
   return (
     <div className="relative h-[calc(100vh-4rem)] min-h-[560px] w-full overflow-hidden rounded-lg border bg-background">
       <ReactFlow<DecisionNode, BranchEdge>
-        nodes={workflow.nodes}
-        edges={workflow.edges}
+        nodes={displayNodes}
+        edges={displayEdges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}

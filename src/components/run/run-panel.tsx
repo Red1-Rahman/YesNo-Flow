@@ -1,68 +1,50 @@
 "use client"
 
 import { useCallback, useState } from "react"
-import { useRunPolling } from "@/hooks/use-run-polling"
+import { AlertTriangle, Play, RotateCcw, WifiOff } from "lucide-react"
+import type { RunState } from "@/lib/schemas/run"
+import { cn } from "@/lib/utils"
 import type { WorkflowShape } from "@/store/workflow-store"
 
 const buttonClass =
-  "rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+  "inline-flex items-center justify-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
 
-const statusClass =
-  "rounded border px-2 py-0.5 text-xs font-medium"
-
-const statusLabelClass: Record<string, string> = {
-  queued: "text-muted-foreground",
-  running: "text-blue-700",
-  succeeded: "text-green-700",
-  failed: "text-red-700",
+const statusClasses: Record<string, string> = {
+  queued: "border-border bg-muted text-muted-foreground",
+  running: "border-blue-500/40 bg-blue-500/10 text-blue-700 dark:text-blue-400",
+  succeeded: "border-green-600/40 bg-green-600/10 text-green-700 dark:text-green-400",
+  failed: "border-red-600/40 bg-red-600/10 text-red-700 dark:text-red-400",
 }
 
-const stepStatusClass: Record<string, string> = {
-  running: "text-blue-700",
-  success: "text-green-700",
-  error: "text-red-700",
+export type RunPanelProps = {
+  workflow: WorkflowShape
+  run: RunState | null
+  connectionLost: boolean
+  submitError: string | null
+  isSubmitting: boolean
+  onStartRun: (input: string) => Promise<boolean>
 }
 
-export const RunPanel = ({ workflow }: { workflow: WorkflowShape }) => {
+export const RunPanel = ({ workflow, run, connectionLost, submitError, isSubmitting, onStartRun }: RunPanelProps) => {
   const [input, setInput] = useState("")
-  const [submitError, setSubmitError] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const { run, startPolling } = useRunPolling()
+  const [lastInput, setLastInput] = useState<string | null>(null)
 
-  const runWorkflow = useCallback(async () => {
-    const value = input.trim()
-    if (!value || isSubmitting) return
-    setIsSubmitting(true)
-    setSubmitError(null)
-    try {
-      const response = await fetch("/api/runs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workflow, input: value }),
-      })
-      const payload: unknown = await response.json().catch(() => null)
-      if (!response.ok) {
-        const message =
-          typeof payload === "object" && payload !== null && "error" in payload && typeof (payload as { error: unknown }).error === "string"
-            ? (payload as { error: string }).error
-            : "Failed to start the run."
-        setSubmitError(message)
-        return
-      }
-      if (typeof payload === "object" && payload !== null && "runId" in payload && typeof (payload as { runId: unknown }).runId === "string") {
-        startPolling((payload as { runId: string }).runId)
-      } else {
-        setSubmitError("The server did not return a run id.")
-      }
-    } catch {
-      setSubmitError("Could not reach the server.")
-    } finally {
-      setIsSubmitting(false)
+  const isRunning = run?.status === "queued" || run?.status === "running"
+
+  const submit = useCallback(async () => {
+    if (await onStartRun(input)) {
+      setLastInput(input)
     }
-  }, [input, isSubmitting, startPolling, workflow])
+  }, [input, onStartRun])
+
+  // "Run again" reuses the last submitted input, even if the box changed.
+  const runAgain = useCallback(() => {
+    const value = lastInput ?? input
+    if (value.trim()) void onStartRun(value)
+  }, [input, lastInput, onStartRun])
 
   return (
-    <section className="flex w-full flex-col gap-3 rounded-lg border bg-card p-4 shadow-sm lg:w-96">
+    <section className="flex w-full flex-col gap-3 rounded-lg border bg-card p-4 shadow-sm lg:w-96" aria-label="Run">
       <h2 className="text-base font-semibold">Run</h2>
       <label className="text-sm font-medium" htmlFor="run-input">
         Input
@@ -75,42 +57,54 @@ export const RunPanel = ({ workflow }: { workflow: WorkflowShape }) => {
         maxLength={8000}
         onChange={(event) => setInput(event.target.value)}
       />
-      <button className={buttonClass} onClick={() => void runWorkflow()} disabled={isSubmitting || input.trim().length === 0}>
-        {isSubmitting ? "Starting..." : "Run"}
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button
+          className={buttonClass}
+          onClick={() => void submit()}
+          disabled={isSubmitting || isRunning || input.trim().length === 0}
+        >
+          <Play className="h-3.5 w-3.5" aria-hidden="true" />
+          {isSubmitting ? "Starting..." : isRunning ? "Running..." : "Run"}
+        </button>
+        {lastInput && !isRunning && (
+          <button className={cn(buttonClass, "border bg-card text-foreground hover:bg-muted")} onClick={runAgain} disabled={isSubmitting}>
+            <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+            Run again
+          </button>
+        )}
+      </div>
+
       {submitError && (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="inline-flex items-start gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-sm text-amber-700 dark:text-amber-500">
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           {submitError}
         </p>
       )}
+
+      {connectionLost && (
+        <p role="status" className="inline-flex items-start gap-1.5 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-sm text-amber-700 dark:text-amber-500">
+          <WifiOff className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          Connection lost. Retrying...
+        </p>
+      )}
+
       {run && (
         <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            <span className={`${statusClass} ${statusLabelClass[run.status] ?? ""}`}>{run.status}</span>
-            {run.outcomeNodeId && <span className="text-xs text-muted-foreground">outcome: {run.outcomeNodeId}</span>}
-          </div>
-          {run.error && (
-            <p role="alert" className="text-sm text-red-700">
+          <span className={cn("inline-flex w-fit items-center gap-1.5 rounded border px-2 py-0.5 text-xs font-medium", statusClasses[run.status])}>
+            {run.status === "running" && <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" aria-hidden="true" />}
+            {run.status}
+          </span>
+          {run.status === "failed" && run.error && (
+            <p role="alert" className="inline-flex items-start gap-1.5 rounded-md border border-red-600/40 bg-red-600/10 px-2 py-1.5 text-sm text-red-700 dark:text-red-400">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               {run.error}
             </p>
           )}
-          <ol className="flex max-h-72 flex-col gap-1 overflow-y-auto" aria-label="Run steps">
-            {run.steps.map((step, index) => (
-              <li key={`${step.nodeId}:${step.visit}:${index}`} className="rounded border bg-background px-2 py-1 text-xs">
-                <span className="font-medium">{step.nodeId}</span>
-                {" visit "}
-                {step.visit}
-                {step.answer && (
-                  <span className={`ml-1 font-semibold ${step.answer === "YES" ? "text-green-700" : "text-red-700"}`}>
-                    {step.answer}
-                  </span>
-                )}
-                <span className={`ml-1 ${stepStatusClass[step.status] ?? ""}`}>[{step.status}]</span>
-                {typeof step.durationMs === "number" && <span className="ml-1 text-muted-foreground">{step.durationMs}ms</span>}
-                {step.error && <span className="ml-1 text-red-700">{step.error}</span>}
-              </li>
-            ))}
-          </ol>
+          {run.outcomeNodeId && (
+            <p className="text-xs text-muted-foreground">
+              Outcome: {workflow.nodes.find((node) => node.id === run.outcomeNodeId)?.data.label || run.outcomeNodeId}
+            </p>
+          )}
         </div>
       )}
     </section>
