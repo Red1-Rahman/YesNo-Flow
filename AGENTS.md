@@ -8,14 +8,14 @@ Instructions for any coding agent working in this repository. Read this file ful
 
 ## Commands
 
-| Task | Command |
-| --- | --- |
-| Install and prepare | `./console/setup.sh` |
-| Run app and Inngest | `./console/dev.sh` |
-| Verification gate | `./console/check.sh` |
-| Docs lint (no em dashes) | `./console/docs-lint.sh` |
+| Task | Bash | PowerShell |
+| --- | --- | --- |
+| Install and prepare | `./console/setup.sh` | `.\console\setup.ps1` |
+| Run app and Inngest | `./console/dev.sh` | `.\console\dev.ps1` |
+| Verification gate | `./console/check.sh` | `.\console\check.ps1` |
+| Docs lint (no em dashes) | `./console/docs-lint.sh` | `.\console\docs-lint.ps1` |
 
-Never report work as done until `./console/check.sh` passes.
+Never report work as done until the check script passes. Use the variant that matches your shell. The maintainer works on Windows, so keep `.sh` and `.ps1` scripts in sync: any change to one must be mirrored in the other.
 
 ## Map of the repo
 

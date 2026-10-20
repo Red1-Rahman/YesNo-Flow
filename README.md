@@ -1,4 +1,4 @@
-# yesno-flow
+# YesNo-Flow
 
 A visual AI workflow builder. Every node is an AI decision step that answers **YES** or **NO**. The graph is edited on a React Flow canvas and executed durably by Inngest, one node per Inngest step.
 
@@ -23,24 +23,38 @@ A visual AI workflow builder. Every node is an AI decision step that answers **Y
 
 ## Quick start
 
+macOS, Linux, Git Bash, WSL:
+
 ```bash
 ./console/setup.sh          # install deps, create .env.local
 # add OPENAI_API_KEY to .env.local
 ./console/dev.sh            # Next.js on :3000 and Inngest dev server on :8288
 ```
 
+Windows PowerShell:
+
+```powershell
+.\console\setup.ps1
+# add OPENAI_API_KEY to .env.local
+.\console\dev.ps1
+```
+
+If PowerShell blocks the scripts, run them once with `powershell -ExecutionPolicy Bypass -File .\console\dev.ps1`, or allow local scripts with `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
+
 Open http://localhost:3000 for the editor and http://localhost:8288 for the Inngest dashboard.
 
 ## Console scripts
 
+Every script exists as `.sh` and `.ps1` with identical behavior.
+
 | Script | Purpose |
 | --- | --- |
-| `console/setup.sh` | One-time setup |
-| `console/dev.sh` | Run app and Inngest together |
-| `console/inngest.sh` | Run only the Inngest dev server |
-| `console/check.sh` | Typecheck, lint, test (the verification gate) |
-| `console/docs-lint.sh` | Fail on em dashes in markdown |
-| `console/clean.sh` | Remove build output and local run data |
+| `console/setup` (.sh, .ps1) | One-time setup |
+| `console/dev` (.sh, .ps1) | Run app and Inngest together |
+| `console/inngest` (.sh, .ps1) | Run only the Inngest dev server |
+| `console/check` (.sh, .ps1) | Typecheck, lint, test (the verification gate) |
+| `console/docs-lint` (.sh, .ps1) | Fail on em dashes in markdown |
+| `console/clean` (.sh, .ps1) | Remove build output and local run data |
 
 ## How it works
 

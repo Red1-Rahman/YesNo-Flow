@@ -10,7 +10,7 @@ yesno-flow/
   package.json
   .env.example
   components.json              shadcn config
-  console/                     shell scripts
+  console/                     *.sh and *.ps1 mirrors
   docs/                        architecture.md, codebase.md
   .agents/skills/              task skills for agents
   .agents/prompts/              phase prompts, runtime prompt
