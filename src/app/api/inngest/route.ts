@@ -1,7 +1,7 @@
 import { serve } from "inngest/next"
 import { inngest } from "@/inngest/client"
-import { helloWorld } from "@/inngest/functions/hello-world"
+import { functions } from "@/inngest"
 
-const { GET, POST } = serve({ client: inngest, functions: [helloWorld] })
+const { GET, POST, PUT } = serve({ client: inngest, functions })
 
-export { GET, POST }
+export { GET, POST, PUT }

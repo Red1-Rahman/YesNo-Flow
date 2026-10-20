@@ -26,3 +26,6 @@ export const RunStateSchema = z.object({
   outcomeNodeId: z.string().optional(),
   error: z.string().optional(),
 })
+
+export type StepRecord = z.infer<typeof StepRecordSchema>
+export type RunState = z.infer<typeof RunStateSchema>

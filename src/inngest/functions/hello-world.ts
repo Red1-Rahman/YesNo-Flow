@@ -1,25 +1,11 @@
-// Hello world Inngest function triggered by the app/hello event.
+// Hello world Inngest function triggered by the app/hello event. Kept from
+// Phase 1 as a smoke test for the Inngest dev server.
+import { inngest } from "../client"
 
-export const helloWorld = {
-  // $FlowFixMe[incompatible-type] - [Symbol.toStringTag] must be exactly "Inngest.Function"
-  [Symbol.toStringTag]: "Inngest.Function" as const,
-  name: "hello-world",
-  event: "app/hello",
-  run: async () => {
+export const helloWorld = inngest.createFunction(
+  { id: "hello-world" },
+  { event: "app/hello" },
+  async () => {
     return { greeted: true }
   },
-
-  // getConfig method required by Inngest serve handler
-  getConfig() {
-    return {
-      id: "hello-world",
-      name: "hello-world",
-      triggers: [
-        {
-          event: "app/hello",
-        },
-      ],
-      steps: {},
-    }
-  },
-}
+)

@@ -1,5 +1,5 @@
 import { type Workflow } from "../schemas/workflow"
-import type { RunState } from "../run-store"
+import type { RunState } from "../schemas/run"
 
 export const deriveNodeStates = (run: Pick<RunState, "steps">) => {
   const states: Record<string, "idle" | "running" | "success-yes" | "success-no" | "error"> = {}

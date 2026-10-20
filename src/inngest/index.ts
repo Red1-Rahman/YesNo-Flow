@@ -1,2 +1,6 @@
-export { helloWorld } from "./functions/hello-world"
-export { runWorkflow } from "./functions/run-workflow"
+import { helloWorld } from "./functions/hello-world"
+import { runWorkflow } from "./functions/run-workflow"
+
+export const functions = [helloWorld, runWorkflow]
+
+export { runWorkflow }

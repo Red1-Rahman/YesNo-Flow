@@ -1,9 +1,12 @@
 import { z } from "zod"
 
 const envSchema = z.object({
-  OPENAI_API_KEY: z.string().min(1),
-  OPENAI_BASE_URL: z.string().url().default("https://openrouter.ai/api/v1"),
-  OPENAI_MODEL: z.string().default("openrouter/free"),
+  // Optional at module load so a missing key becomes a request-time error
+  // with a readable message instead of a crash. Enforced in /api/runs and
+  // in the decision call.
+  OPENAI_API_KEY: z.string().default(""),
+  OPENAI_BASE_URL: z.string().url().default("https://api.openai.com/v1"),
+  OPENAI_MODEL: z.string().default("gpt-4o-mini"),
   INNGEST_DEV: z.string().default("1"),
   INNGEST_BASE_URL: z.string().default("http://localhost:8288"),
   INNGEST_EVENT_KEY: z.string().default(""),
