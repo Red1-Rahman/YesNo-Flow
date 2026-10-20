@@ -1,7 +1,7 @@
 import { type Workflow } from "../schemas/workflow"
-import { type StepRecord } from "../run-store"
+import type { RunState } from "../run-store"
 
-export const deriveNodeStates = (run: any) => {
+export const deriveNodeStates = (run: Pick<RunState, "steps">) => {
   const states: Record<string, "idle" | "running" | "success-yes" | "success-no" | "error"> = {}
 
   for (const step of run.steps) {
@@ -20,7 +20,7 @@ export const deriveNodeStates = (run: any) => {
   return states
 }
 
-export const deriveEdgeStates = (workflow: Workflow, run: any) => {
+export const deriveEdgeStates = (workflow: Workflow, run: Pick<RunState, "steps">) => {
   const nodeStates = deriveNodeStates(run)
   const states: Record<string, "idle" | "running" | "success-yes" | "success-no" | "error"> = {}
 

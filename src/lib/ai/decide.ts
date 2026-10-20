@@ -1,16 +1,22 @@
-import { DECISION_SYSTEM_PROMPT } from "./prompt"
-import { z } from "zod"
 import { OpenAI } from "openai"
-
-const Model = process.env.OPENAI_MODEL || "gpt-4o-mini"
+import { z } from "zod"
+import { env } from "../env"
+import { AnswerSchema } from "../schemas/workflow"
+import { DECISION_SYSTEM_PROMPT } from "./prompt"
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: env.OPENAI_API_KEY,
+  baseURL: env.OPENAI_BASE_URL,
 })
 
-const AnswerSchema = z.object({
-  answer: z.enum(["YES", "NO"]),
-})
+const DecisionResponseSchema = z.object({ answer: AnswerSchema }).strict()
+
+const decisionJsonSchema = {
+  type: "object",
+  properties: { answer: { type: "string", enum: ["YES", "NO"] } },
+  required: ["answer"],
+  additionalProperties: false,
+} as const
 
 const systemPrompt = DECISION_SYSTEM_PROMPT
 
@@ -22,7 +28,7 @@ export async function decide({
   input: string
 }) {
   const completion = await openai.chat.completions.create({
-    model: Model,
+    model: env.OPENAI_MODEL,
     temperature: 0,
     messages: [
       { role: "system", content: systemPrompt },
@@ -35,7 +41,7 @@ export async function decide({
       type: "json_schema",
       json_schema: {
         name: "Answer",
-        schema: AnswerSchema.shape,
+        schema: decisionJsonSchema,
         strict: true,
       },
     },
@@ -47,6 +53,6 @@ export async function decide({
     throw new Error("No response from model")
   }
 
-  const parsed = AnswerSchema.parse(JSON.parse(raw))
-  return parsed.answer
+  const parsed: unknown = JSON.parse(raw)
+  return DecisionResponseSchema.parse(parsed).answer
 }

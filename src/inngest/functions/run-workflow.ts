@@ -1,4 +1,5 @@
 import { decide } from "@/lib/ai/decide"
+import type { Workflow } from "@/lib/schemas/workflow"
 
 const TAG = "Inngest.Function"
 
@@ -15,7 +16,7 @@ export const runWorkflow = {
     }
   },
 
-  async run({ workflow, input }: { workflow: any; input: string }) {
+  async run({ workflow, input }: { workflow: Workflow; input: string }) {
     let current = workflow.startNodeId
     const visits = new Map<string, number>()
     let totalSteps = 0
@@ -36,9 +37,7 @@ export const runWorkflow = {
       const answer = await decide({ prompt: "", input })
 
       const answerKey = answer === "YES" ? "yes" : "no"
-      const edge = workflow.edges.find(
-        (e: { source: string; sourceHandle: string }) => e.source === current && e.sourceHandle === answerKey,
-      )
+      const edge = workflow.edges.find((item) => item.source === current && item.sourceHandle === answerKey)
 
       if (!edge) {
         return { outcomeNodeId: current, status: "succeeded" }

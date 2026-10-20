@@ -16,8 +16,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "vitest run --pool=threads",
+    "test:watch": "vitest --pool=threads",
     "check": "npm run typecheck && npm run lint && npm run test",
     "format": "prettier --write ."
   },

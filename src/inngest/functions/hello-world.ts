@@ -5,7 +5,7 @@ export const helloWorld = {
   [Symbol.toStringTag]: "Inngest.Function" as const,
   name: "hello-world",
   event: "app/hello",
-  run: async ({ event, step }: { event: unknown; step: unknown }) => {
+  run: async () => {
     return { greeted: true }
   },
 
