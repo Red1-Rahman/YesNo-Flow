@@ -32,7 +32,7 @@ Never report work as done until `./console/check.sh` passes.
 | `src/store` | Zustand workflow store |
 | `docs/` | `architecture.md`, `codebase.md` |
 | `.agents/skills/` | Skills you should load for matching tasks |
-| `agents/prompts/` | Phase prompts and the runtime decision prompt |
+| `.agents/prompts/` | Phase prompts and the runtime decision prompt |
 
 More detail: `docs/codebase.md`.
 
@@ -52,7 +52,7 @@ More detail: `docs/codebase.md`.
 ## Working agreement
 
 1. Read the relevant skill in `.agents/skills/` before starting.
-2. Read the matching phase prompt in `agents/prompts/`.
+2. Read the matching phase prompt in `.agents/prompts/`.
 3. Make the smallest change that satisfies the task.
 4. Add or update tests for any pure logic you touch.
 5. Run `./console/check.sh` and `./console/docs-lint.sh`.
@@ -72,12 +72,12 @@ More detail: `docs/codebase.md`.
 
 | Prompt | Purpose |
 | --- | --- |
-| `agents/prompts/phase-1-setup.md` | Bootstrap the project |
-| `agents/prompts/phase-2-editor.md` | Build the editor and graph model |
-| `agents/prompts/phase-3-execution.md` | Build Inngest execution and AI branching |
-| `agents/prompts/phase-4-polish.md` | Polish features |
-| `agents/prompts/decision-node-system.md` | Runtime system prompt for YES/NO nodes |
-| `agents/prompts/review-diff.md` | Review another agent's diff |
+| `.agents/prompts/phase-1-setup.md` | Bootstrap the project |
+| `.agents/prompts/phase-2-editor.md` | Build the editor and graph model |
+| `.agents/prompts/phase-3-execution.md` | Build Inngest execution and AI branching |
+| `.agents/prompts/phase-4-polish.md` | Polish features |
+| `.agents/prompts/decision-node-system.md` | Runtime system prompt for YES/NO nodes |
+| `.agents/prompts/review-diff.md` | Review another agent's diff |
 
 ## Definition of done
 

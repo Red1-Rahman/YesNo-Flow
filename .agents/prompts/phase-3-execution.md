@@ -8,7 +8,7 @@ Execute the workflow through Inngest. Each node is one step, the LLM answers YES
 
 ## Tasks
 
-1. `src/lib/ai/prompt.ts`: export the system prompt (mirror `agents/prompts/decision-node-system.md`) and `buildUserMessage({ prompt, input })` that wraps input in `<input>` delimiters.
+1. `src/lib/ai/prompt.ts`: export the system prompt (mirror `.agents/prompts/decision-node-system.md`) and `buildUserMessage({ prompt, input })` that wraps input in `<input>` delimiters.
 2. `src/lib/ai/decide.ts`: call OpenAI with `temperature: 0`, structured output JSON schema `{ answer: "YES" | "NO" }` (`strict: true`), then validate with `AnswerSchema`. Throw on anything else. This is the only file importing `openai`. Test with a mocked client.
 3. `src/lib/schemas/run.ts` and `events.ts` as in `docs/codebase.md`.
 4. `src/lib/run-store.ts`: `createRun`, `appendStep`, `updateRun`, `getRun`, backed by `globalThis` Map.

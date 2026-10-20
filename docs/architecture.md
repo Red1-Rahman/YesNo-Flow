@@ -116,7 +116,7 @@ Why this shape:
 Located in `src/lib/ai/decide.ts`.
 
 - Model from `OPENAI_MODEL`, `temperature: 0`.
-- System prompt from `agents/prompts/decision-node-system.md` (mirrored as a constant in `src/lib/ai/prompt.ts`).
+- System prompt from `.agents/prompts/decision-node-system.md` (mirrored as a constant in `src/lib/ai/prompt.ts`).
 - User message wraps the run input in delimiters, then states the node question.
 - Response constrained with a JSON schema: `{ "answer": "YES" | "NO" }`, `strict: true`.
 - Output validated again with Zod. Anything else throws, which triggers an Inngest retry.

@@ -62,7 +62,7 @@ Full details: [docs/architecture.md](docs/architecture.md) and [docs/codebase.md
 
 ## Working with coding agents
 
-Read [AGENTS.md](AGENTS.md) first. Reusable skills live in `.agents/skills/`, phase prompts in `agents/prompts/`.
+Read [AGENTS.md](AGENTS.md) first. Reusable skills live in `.agents/skills/`, phase prompts in `.agents/prompts/`.
 
 ## License
 

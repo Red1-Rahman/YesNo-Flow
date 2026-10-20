@@ -13,7 +13,7 @@ yesno-flow/
   console/                     shell scripts
   docs/                        architecture.md, codebase.md
   .agents/skills/              task skills for agents
-  agents/prompts/              phase prompts, runtime prompt
+  .agents/prompts/              phase prompts, runtime prompt
   src/
     app/
       layout.tsx
