@@ -54,6 +54,10 @@
   },
   "overrides": {
     "node-domexception": "npm:@nolyfill/domexception@^1.0.28",
-    "serialize-error-cjs": "^0.3.0"
+    "serialize-error-cjs": "^0.3.0",
+    "glob": "^13.0.6"
+  },
+  "allowScripts": {
+    "protobufjs": true
   }
 }
