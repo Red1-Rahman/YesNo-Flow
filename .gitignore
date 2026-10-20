@@ -44,3 +44,6 @@ Thumbs.db
 
 # deploy
 .vercel/
+
+# Temporary TypeScript error dumps
+tsc-errors*.txt
