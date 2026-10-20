@@ -1,27 +1,18 @@
 import { memo } from "react"
-import { Handle, Position } from "@xyflow/react"
-import type { NodeProps } from "@xyflow/react"
+import { Handle, Position, type NodeProps } from "@xyflow/react"
 import type { DecisionNode } from "@/lib/types"
-import { cn } from "@/lib/utils"
+import { useWorkflowStore } from "@/store/workflow-store"
 
-export function DecisionNodeView({ data, selected }: NodeProps<DecisionNode>) {
-  const classes = cn(
-    "rounded-lg border bg-card p-3",
-    selected && "ring-2 ring-primary",
-    "nodrag nowheel nokey",
-  )
+export const DecisionNodeView = memo(function DecisionNodeView({ id, data, selected }: NodeProps<DecisionNode>) {
+  const isStart = useWorkflowStore((state) => state.workflow?.startNodeId === id)
   return (
-    <div className={classes}>
+    <div className={["min-w-48 rounded-lg border bg-card p-3", selected && "ring-2 ring-primary"].filter(Boolean).join(" ")}>
       <Handle type="target" position={Position.Top} />
-      <p className="text-sm font-medium">{data.question || "Decision"}</p>
-      <p
-        className="text-xs text-muted-foreground line-clamp-3"
-        style={{ overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxSizing: "border-box" }}
-      >
-        {data.question}
-      </p>
+      {isStart && <span className="mb-1 inline-block rounded bg-primary px-2 py-0.5 text-xs text-primary-foreground">Start</span>}
+      <p className="text-sm font-medium">{data.label || "Decision"}</p>
+      <p className="line-clamp-3 text-xs text-muted-foreground">{data.prompt}</p>
       <Handle type="source" position={Position.Bottom} id="yes" style={{ left: "30%" }} />
       <Handle type="source" position={Position.Bottom} id="no" style={{ left: "70%" }} />
     </div>
   )
-}
+})

@@ -1,177 +1,80 @@
-import { useCallback } from "react"
-import {
-  ReactFlow,
-  NodeChange,
-  EdgeChange,
-  addEdge,
-  applyNodeChanges,
-  applyEdgeChanges,
-} from "@xyflow/react"
-import { useStore } from "zustand/vanilla"
-import { useEffect } from "react"
-import { cn } from "@/lib/utils"
-import type { DecisionNode, BranchEdge } from "@/lib/types"
-import { NodeEditor } from "./node-editor"
-import { useWorkflowStore } from "@/store/workflow-store"
+"use client"
 
-// Import the CSS once
+import { useCallback, useEffect } from "react"
+import {
+  Background,
+  Controls,
+  ReactFlow,
+  type Connection,
+  type NodeMouseHandler,
+} from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
+import type { BranchEdge, DecisionNode } from "@/lib/types"
+import { useWorkflowStore, type WorkflowShape } from "@/store/workflow-store"
+import { BranchEdgeView } from "./branch-edge"
+import { DecisionNodeView } from "./decision-node"
+import { NodeEditor } from "./node-editor"
+
+const nodeTypes = { decision: DecisionNodeView }
+const edgeTypes = { yes: BranchEdgeView, no: BranchEdgeView }
+
+const exampleWorkflow: WorkflowShape = {
+  id: "yesno-flow",
+  name: "yesno-flow",
+  startNodeId: "n-1",
+  nodes: [
+    { id: "n-1", type: "decision", position: { x: 0, y: 0 }, data: { label: "Support request?", prompt: "Is this a support request?" } },
+    { id: "n-2", type: "decision", position: { x: 300, y: -100 }, data: { label: "Support", prompt: "Handle this support request." } },
+    { id: "n-3", type: "decision", position: { x: 300, y: 100 }, data: { label: "Sales", prompt: "Handle this sales request." } },
+  ],
+  edges: [
+    { id: "e1", source: "n-1", target: "n-2", sourceHandle: "yes", targetHandle: null, type: "yes" },
+    { id: "e2", source: "n-1", target: "n-3", sourceHandle: "no", targetHandle: null, type: "no" },
+  ],
+}
 
 export const FlowCanvas = () => {
-  const {
-    workflow,
-    setWorkflow,
-    addNode,
-    updateNode,
-    removeNode,
-    addEdge,
-    removeEdge,
-    setStartNode,
-    applyNodeChanges,
-    applyEdgeChanges,
-    reset,
-    replace,
-  } = useWorkflowStore()
-
-  const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>(undefined)
-
-  const onNodesChange = useCallback(
-    (changes: NodeChange[]) => {
-      setWorkflow(
-        workflow
-          ? {
-              ...workflow,
-              nodes: applyNodeChanges(changes, workflow.nodes),
-            }
-          : undefined,
-      )
-    },
-    [workflow, setWorkflow],
-  )
-
-  const onEdgesChange = useCallback(
-    (changes: EdgeChange[]) => {
-      setWorkflow(
-        workflow
-          ? {
-              ...workflow,
-              edges: applyEdgeChanges(changes, workflow.edges),
-            }
-          : undefined,
-      )
-    },
-    [workflow, setWorkflow],
-  )
-
-  const onNodeSelect = useCallback(
-    (id: string) => {
-      setSelectedNodeId(id)
-    },
-    [],
-  )
+  const workflow = useWorkflowStore((state) => state.workflow)
+  const replace = useWorkflowStore((state) => state.replace)
+  const addNode = useWorkflowStore((state) => state.addNode)
+  const addEdge = useWorkflowStore((state) => state.addEdge)
+  const setStartNode = useWorkflowStore((state) => state.setStartNode)
+  const setSelectedNodeId = useWorkflowStore((state) => state.setSelectedNodeId)
+  const onNodesChange = useWorkflowStore((state) => state.applyNodeChanges)
+  const onEdgesChange = useWorkflowStore((state) => state.applyEdgeChanges)
 
   useEffect(() => {
-    if (!workflow) {
-      const exampleNodes: DecisionNode[] = [
-        {
-          id: "n-1",
-          type: "decision",
-          position: { x: 0, y: 0 },
-          data: { question: "Is this a support request?", isStart: true },
-        },
-        {
-          id: "n-2",
-          type: "decision",
-          position: { x: 300, y: -100 },
-          data: { question: "Yes, it is.", isStart: false },
-        },
-        {
-          id: "n-3",
-          type: "decision",
-          position: { x: 300, y: 100 },
-          data: { question: "No, it is not.", isStart: false },
-        },
-      ]
-      const exampleEdges: BranchEdge[] = [
-        {
-          id: "e1",
-          source: "n-1",
-          target: "n-2",
-          answer: "yes",
-        },
-        {
-          id: "e2",
-          source: "n-1",
-          target: "n-3",
-          answer: "no",
-        },
-      ]
-      replace({ nodes: exampleNodes, edges: exampleEdges, startNodeId: "n-1", name: "yesno-flow" })
-    }
+    if (!workflow) replace(exampleWorkflow)
   }, [workflow, replace])
 
-  const hasStartNode = workflow?.startNodeId
-    ? workflow.nodes.some((n) => n.id === workflow.startNodeId)
-    : false
+  const onConnect = useCallback((connection: Connection) => addEdge(connection), [addEdge])
+  const onNodeClick: NodeMouseHandler<DecisionNode> = useCallback((_event, node) => setSelectedNodeId(node.id), [setSelectedNodeId])
 
   return (
-    <ReactFlow<DecisionNode, BranchEdge>
-      fitView fitViewOptions={{ padding: 0.2, maxZoom: 1 }} minZoom={0.2} maxZoom={2}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-      onNodeSelect={onNodeSelect}
-      nodeTypes={{ decision: NodeEditor }}
-      edgeTypes={{ branch: BranchEdgeView }}
-      defaultEdgeType="branch"
-      className={cn("min-h-[600px]")}
-    >
-      {workflow?.nodes.map((node) => (
-        <ReactFlow.Node
-          key={node.id}
-          type="decision"
-          id={node.id}
-          data={node.data}
-        />
-      ))}
-
-      {workflow?.edges.map((edge) => (
-        <ReactFlow.Edge
-          key={edge.id}
-          type={edge.answer}
-          source={edge.source}
-          target={edge.target}
-          sourceHandle={edge.answer}
-        />
-      ))}
-
-      {selectedNodeId && <NodeEditor />}
-
-      <div className="fixed top-4 left-4 flex gap-2 z-50">
-        <button
-          onClick={() => {
-            const newId = `n-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
-            addNode(0, 0, "New Question")
-            setSelectedNodeId(newId)
-          }}
-          className="px-3 py-1 bg-blue-600 text-white rounded text-sm"
-        >
-          +
-        </button>
-        <button
-          onClick={() => setStartNode(workflow?.nodes[0]?.id ?? "")}
-          className="px-3 py-1 bg-green-600 text-white rounded text-sm"
-          disabled={!workflow?.nodes.length}
-        >
-          S
-        </button>
-        <button
-          onClick={() => reset()}
-          className="px-3 py-1 bg-gray-600 text-white rounded text-sm"
-          disabled={!workflow?.nodes.length}
-        >
-          R
-        </button>
+    <div className="relative h-[calc(100vh-5rem)] min-h-[600px] w-full">
+      <ReactFlow<DecisionNode, BranchEdge>
+        nodes={workflow?.nodes ?? []}
+        edges={workflow?.edges ?? []}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        onNodeClick={onNodeClick}
+        fitView
+        fitViewOptions={{ padding: 0.2, maxZoom: 1 }}
+        minZoom={0.2}
+        maxZoom={2}
+      >
+        <Background />
+        <Controls />
+      </ReactFlow>
+      <div className="absolute left-4 top-4 z-10 flex gap-2">
+        <button className="rounded bg-blue-600 px-3 py-1 text-sm text-white" onClick={() => setSelectedNodeId(addNode(0, 0))}>Add node</button>
+        <button className="rounded bg-green-700 px-3 py-1 text-sm text-white" onClick={() => workflow?.nodes[0] && setStartNode(workflow.nodes[0].id)} disabled={!workflow?.nodes.length}>Set first as start</button>
+        <button className="rounded bg-gray-700 px-3 py-1 text-sm text-white" onClick={() => replace(exampleWorkflow)}>Reset</button>
       </div>
-    </ReactFlow>
+      <NodeEditor />
+    </div>
   )
 }

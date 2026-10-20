@@ -1,73 +1,39 @@
-import { useCallback, useState } from "react"
-import { useWorkflowStore } from "@/store/workflow-store"
-import { cn } from "@/lib/utils"
+"use client"
 
-type NodeData = { label: string; prompt: string }
+import { useEffect, useState } from "react"
+import { useWorkflowStore } from "@/store/workflow-store"
 
 export const NodeEditor = () => {
-  const { workflow, updateNode, removeNode, setStartNode } = useWorkflowStore()
-  const [editingNodeId, setEditingNodeId] = useState<string | undefined>(undefined)
-  const [newLabel, setNewLabel] = useState("")
-  const [newPrompt, setNewPrompt] = useState("")
+  const workflow = useWorkflowStore((state) => state.workflow)
+  const selectedNodeId = useWorkflowStore((state) => state.selectedNodeId)
+  const setSelectedNodeId = useWorkflowStore((state) => state.setSelectedNodeId)
+  const updateNode = useWorkflowStore((state) => state.updateNode)
+  const removeNode = useWorkflowStore((state) => state.removeNode)
+  const node = workflow?.nodes.find((item) => item.id === selectedNodeId)
+  const [label, setLabel] = useState("")
+  const [prompt, setPrompt] = useState("")
 
-  const openEditor = (id: string, label: string, prompt: string) => {
-    setEditingNodeId(id)
-    setNewLabel(label)
-    setNewPrompt(prompt)
-  }
+  useEffect(() => {
+    setLabel(node?.data.label ?? "")
+    setPrompt(node?.data.prompt ?? "")
+  }, [node?.id, node?.data.label, node?.data.prompt])
 
-  const closeEditor = () => {
-    setEditingNodeId(undefined)
-    setNewLabel("")
-    setNewPrompt("")
-  }
+  if (!node) return null
 
-  if (!editingNodeId) {
-    return null
-  }
-
-  const node = workflow?.nodes.find((n) => n.id === editingNodeId)
-
-  if (!node) {
-    closeEditor()
-    return null
-  }
-
+  const close = () => setSelectedNodeId(undefined)
   return (
-    <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white p-6 rounded-lg shadow-xl w-full max-w-sm z-50">
-      <h3 className="text-lg font-semibold mb-6">Edit Decision Node</h3>
-      <div className="mb-4">
-        <label className="block text-sm font-medium mb-2">Label</label>
-        <input
-          value={newLabel}
-          onChange={(e) => setNewLabel(e.target.value)}
-          className="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-primary"
-          placeholder="e.g. Support"
-        />
+    <div className="absolute right-4 top-16 z-20 w-full max-w-sm rounded-lg border bg-background p-5 shadow-xl">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="text-lg font-semibold">Edit decision</h3>
+        <button onClick={close} aria-label="Close editor" className="rounded px-2 py-1 hover:bg-muted">×</button>
       </div>
-      <div className="mb-4">
-        <label className="block text-sm font-medium mb-2">Prompt</label>
-        <textarea
-          value={newPrompt}
-          onChange={(e) => setNewPrompt(e.target.value)}
-          className="w-full border rounded p-2 focus:outline-none focus:ring-2 focus:ring-primary h-32 resize-y"
-          rows={3}
-          placeholder="e.g. Is this a support request?"
-        ></textarea>
-      </div>
-      <div className="flex justify-end gap-3 mt-8">
-        <button onClick={closeEditor} className="px-4 py-2 border rounded cancel:bg-gray-200">
-          Cancel
-        </button>
-        <button
-          onClick={() => {
-            updateNode(editingNodeId, { label: newLabel, prompt: newPrompt })
-            closeEditor()
-          }}
-          className="px-4 py-2 bg-primary text-white rounded"
-        >
-          Save
-        </button>
+      <label className="mb-1 block text-sm font-medium" htmlFor="node-label">Label</label>
+      <input id="node-label" value={label} onChange={(event) => setLabel(event.target.value)} className="mb-4 w-full rounded border bg-background p-2" maxLength={80} />
+      <label className="mb-1 block text-sm font-medium" htmlFor="node-prompt">Prompt</label>
+      <textarea id="node-prompt" value={prompt} onChange={(event) => setPrompt(event.target.value)} className="mb-4 min-h-32 w-full rounded border bg-background p-2" maxLength={4000} />
+      <div className="flex justify-between gap-2">
+        <button className="rounded border px-3 py-2 text-sm" onClick={() => { removeNode(node.id); close() }}>Delete node</button>
+        <button className="rounded bg-primary px-3 py-2 text-sm text-primary-foreground" onClick={() => { updateNode(node.id, { label, prompt }); close() }}>Save</button>
       </div>
     </div>
   )

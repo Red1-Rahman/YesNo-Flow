@@ -39,12 +39,10 @@ export const WorkflowSchema = z.object({
 export type Workflow = z.infer<typeof WorkflowSchema>
 
 export type DecisionData = {
-  question: string
-  isStart?: boolean
+  label: string
+  prompt: string
 }
-
-export type BranchData = { answer: "yes" | "no" }
 
 export type DecisionNode = Node<DecisionData, "decision">
 
-export type BranchEdge = Edge<BranchData, "branch">
+export type BranchEdge = Edge<Record<string, never>, "yes" | "no">

@@ -10,7 +10,6 @@
     "isolatedModules": true,
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
-    "baseUrl": ".",
     "paths": {
       "@/*": [
         "./src/*"
