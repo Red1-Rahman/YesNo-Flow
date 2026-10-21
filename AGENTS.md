@@ -59,23 +59,26 @@ More detail: `docs/codebase.md`.
 6. Summarize what changed, what you verified, and what you did not.
 
 ## Skills index
-
+ 
 | Skill | Load when |
 | --- | --- |
 | `.agents/skills/react-flow-implementation.md` | Touching the canvas, nodes, edges, handles, viewport |
 | `.agents/skills/shadcn-ui.md` | Adding or styling UI components |
+| `.agents/skills/context-engineering.md` | Changing what the LLM sees, context sources, budgets, citations, or planning long agent work |
+| `.agents/skills/zod.md` | Defining or changing a schema, parsing at a boundary, env validation, schema tests |
 | `.agents/skills/inngest-workflow.md` | Touching the Inngest client, functions, or run store |
 | `.agents/skills/improve.md` | Asked to audit the repo or plan improvements for another agent |
 | `.agents/skills/prompt-library-builder.md` | Editing node prompts or building reusable prompt templates |
-
+ 
 ## Prompt index
-
+ 
 | Prompt | Purpose |
 | --- | --- |
 | `.agents/prompts/phase-1-setup.md` | Bootstrap the project |
 | `.agents/prompts/phase-2-editor.md` | Build the editor and graph model |
 | `.agents/prompts/phase-3-execution.md` | Build Inngest execution and AI branching |
 | `.agents/prompts/phase-4-polish.md` | Polish features |
+| `.agents/prompts/phase-5-context-retrieval.md` | Per-node context sources with verified citations |
 | `.agents/prompts/decision-node-system.md` | Runtime system prompt for YES/NO nodes |
 | `.agents/prompts/review-diff.md` | Review another agent's diff |
 

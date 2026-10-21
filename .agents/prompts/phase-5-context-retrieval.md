@@ -1,6 +1,6 @@
 # Prompt: Phase 5, Context retrieval (about 3 hours)
 
-Load `.agents/skills/inngest-workflow.md`, `.agents/skills/shadcn-ui.md`, and `.agents/skills/prompt-library-builder.md`.
+Load `.agents/skills/inngest-workflow.md`, `.agents/skills/shadcn-ui.md`, `.agents/skills/prompt-library-builder.md`, `.agents/skills/zod.md` and `.agents/skills/context-engineering.md`.
 
 Read first: the rules in `AGENTS.md`, `docs/architecture.md` sections "Execution algorithm", "The decision call", "Security", `.agents/prompts/decision-node-system.md`, and the current `src/lib/ai/decide.ts` and `src/inngest/functions/run-workflow.ts`.
 
