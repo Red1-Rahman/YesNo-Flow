@@ -21,6 +21,25 @@ describe("decide", () => {
     expect(request.response_format.json_schema.schema.required).toEqual(["answer", "citations"])
     expect(request.max_tokens).toBe(400)
   })
+  it("reports safe provider metadata when a completion has no final content", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {})
+    createCompletion.mockResolvedValueOnce({
+      choices: [{ message: { content: null }, finish_reason: "length" }],
+      model: "provider/model-id",
+      usage: { completion_tokens: 400, prompt_tokens: 125 },
+    })
+    await expect(decide({ prompt: "Is this true?", input: "private run input" })).rejects.toThrow(
+      "The model returned no final answer (model: provider/model-id; finish reason: length). The step will be retried.",
+    )
+    expect(log).toHaveBeenCalledWith("[decide] provider returned no final answer:", {
+      model: "provider/model-id",
+      finishReason: "length",
+      completionTokens: 400,
+      promptTokens: 125,
+    })
+    expect(JSON.stringify(log.mock.calls)).not.toContain("private run input")
+    log.mockRestore()
+  })
   it("falls back once after a 400 in auto mode", async () => {
     createCompletion.mockRejectedValueOnce(Object.assign(new Error("unsupported"), { status: 400 })).mockResolvedValueOnce(response('{"answer":"NO","citations":[]}'))
     expect((await decide({ prompt: "Question?", input: "x" })).answer).toBe("NO")

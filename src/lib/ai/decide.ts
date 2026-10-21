@@ -46,8 +46,23 @@ export async function decide({ prompt, input, context = [], signal }: { prompt: 
     }
     throw new AppError("The model request failed. Check the server configuration and try again.", { cause: error })
   }
-  const raw = response.choices[0]?.message.content
-  if (!raw) throw new AppError("The model returned an empty response. The step will be retried.")
+  const choice = response.choices[0]
+  const raw = choice?.message.content
+  if (typeof raw !== "string" || raw.trim().length === 0) {
+    // Keep this metadata-only. Provider responses can contain private prompts,
+    // run input, or context, so never log the response body here.
+    const diagnostic = {
+      model: response.model || "unknown",
+      finishReason: choice?.finish_reason ?? "unknown",
+      completionTokens: response.usage?.completion_tokens ?? null,
+      promptTokens: response.usage?.prompt_tokens ?? null,
+    }
+    console.error("[decide] provider returned no final answer:", diagnostic)
+    throw new AppError(
+      `The model returned no final answer (model: ${diagnostic.model}; finish reason: ${diagnostic.finishReason}). The step will be retried.`,
+      { code: "EMPTY_MODEL_RESPONSE" },
+    )
+  }
   const result = extractDecision(raw)
   const verified = context.length ? verifyCitations(result.citations as ModelCitation[], context) : { citations: [], grounded: false }
   return { answer: result.answer, ...verified, model: response.model }
