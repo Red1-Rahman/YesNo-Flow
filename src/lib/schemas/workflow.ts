@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { NodeContextSchema } from "./context"
 
 export const AnswerSchema = z.enum(["YES", "NO"])
 export type Answer = z.infer<typeof AnswerSchema>
@@ -13,6 +14,7 @@ export const DecisionNodeSchema = z.object({
   data: z.object({
     label: z.string().max(80).default(""),
     prompt: z.string().min(1).max(4000),
+    context: NodeContextSchema.default({ sources: [], requireCitation: false }),
   }),
 })
 

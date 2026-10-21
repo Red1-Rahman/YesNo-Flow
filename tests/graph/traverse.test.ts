@@ -7,8 +7,8 @@ const workflow: Workflow = {
   name: "Workflow",
   startNodeId: "a",
   nodes: [
-    { id: "a", type: "decision", position: { x: 0, y: 0 }, data: { label: "A", prompt: "A?" } },
-    { id: "b", type: "decision", position: { x: 1, y: 1 }, data: { label: "B", prompt: "B?" } },
+    { id: "a", type: "decision", position: { x: 0, y: 0 }, data: { label: "A", prompt: "A?", context: { sources: [], requireCitation: false } } },
+    { id: "b", type: "decision", position: { x: 1, y: 1 }, data: { label: "B", prompt: "B?", context: { sources: [], requireCitation: false } } },
   ],
   edges: [
     { id: "yes", source: "a", target: "b", sourceHandle: "yes", type: "yes" },

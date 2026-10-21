@@ -2,6 +2,7 @@
 
 import { useRef } from "react"
 import { toast } from "sonner"
+import { NodeContextSchema } from "@/lib/schemas/context"
 import { WorkflowSchema } from "@/lib/schemas/workflow"
 import { useWorkflowStore } from "@/store/workflow-store"
 
@@ -21,7 +22,9 @@ export const Toolbar = () => {
   const replace = useWorkflowStore((state) => state.replace)
   const selectedNodeId = useWorkflowStore((state) => state.selectedNodeId)
   const setSelectedNodeId = useWorkflowStore((state) => state.setSelectedNodeId)
+  const updateNode = useWorkflowStore((state) => state.updateNode)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const contextFileInputRef = useRef<HTMLInputElement>(null)
 
   const startNodeId = selectedNodeId ?? workflow.nodes[0]?.id
 
@@ -68,7 +71,17 @@ export const Toolbar = () => {
       return
     }
     replace(parsed.data)
-    toast.success("Workflow imported")
+    const refs = new Set<string>()
+    try {
+      const response = await fetch("/api/context")
+      const result = await response.json() as { refs?: { ref: string; format: string }[] }
+      for (const item of result.refs ?? []) refs.add(`${item.format}:${item.ref}`)
+    } catch { /* Import remains usable offline. */ }
+    const missing = parsed.data.nodes.flatMap((item) => {
+      const ctx = NodeContextSchema.parse(item.data.context ?? {})
+      return ctx.sources.filter((source) => !refs.has(`${source.format}:${source.ref}`)).map((source) => `${item.id}: ${source.id} (${source.ref})`)
+    })
+    toast.success("Workflow imported", missing.length ? { description: `Missing context sources: ${missing.join(", ")}` } : undefined)
   }
 
   const onFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,12 +90,52 @@ export const Toolbar = () => {
     if (file) void importWorkflow(file)
   }
 
+  const importContext = async (file: File) => {
+    let targetNodeId = selectedNodeId ?? workflow.nodes[0]?.id
+    if (!targetNodeId) targetNodeId = addNode(40, 40)
+    setSelectedNodeId(targetNodeId)
+
+    try {
+      const body = new FormData()
+      body.set("file", file)
+      const response = await fetch("/api/context", { method: "POST", body })
+      const result = await response.json() as { ref?: string; format?: string; error?: string }
+      if (!response.ok || !result.ref || !result.format) {
+        toast.error("Context import failed", { description: result.error ?? "The file could not be imported." })
+        return
+      }
+
+      const node = useWorkflowStore.getState().workflow.nodes.find((item) => item.id === targetNodeId)
+      if (!node) {
+        toast.error("Context import failed", { description: "The target node no longer exists." })
+        return
+      }
+      const context = NodeContextSchema.parse(node.data.context ?? {})
+      const baseId = file.name.replace(/\.[^.]+$/, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 32) || "source"
+      let id = baseId
+      let suffix = 2
+      while (context.sources.some((source) => source.id === id)) id = `${baseId.slice(0, 29)}-${suffix++}`
+      const nextContext = NodeContextSchema.parse({ ...context, sources: [...context.sources, { id, ref: result.ref, format: result.format, required: true }] })
+      updateNode(targetNodeId, { context: nextContext })
+      toast.success("Context imported", { description: `Attached to ${node.data.label || "decision node"}.` })
+    } catch {
+      toast.error("Context import failed", { description: "The file could not be imported." })
+    }
+  }
+
+  const onContextFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ""
+    if (file) void importContext(file)
+  }
+
   return (
     <div className="absolute left-4 top-4 z-10 flex flex-wrap gap-2">
       <button className={buttonClass} onClick={() => setSelectedNodeId(addNode(40, 40))}>Add node</button>
       <button className={buttonClass} onClick={() => startNodeId && setStartNode(startNodeId)} disabled={!startNodeId}>Set as start</button>
       <button className={buttonClass} onClick={exportWorkflow}>Export</button>
       <button className={buttonClass} onClick={() => fileInputRef.current?.click()}>Import</button>
+      <button className={buttonClass} onClick={() => contextFileInputRef.current?.click()}>Import context</button>
       <input
         ref={fileInputRef}
         type="file"
@@ -90,6 +143,14 @@ export const Toolbar = () => {
         className="hidden"
         aria-label="Import workflow file"
         onChange={onFileChange}
+      />
+      <input
+        ref={contextFileInputRef}
+        type="file"
+        accept=".md,.txt,.json,.yaml,.yml"
+        className="hidden"
+        aria-label="Import context file"
+        onChange={onContextFileChange}
       />
       <button
         className={buttonClass}

@@ -26,6 +26,7 @@ Never report work as done until the check script passes. Use the variant that ma
 | `src/components/run` | Run input, logs panel, history |
 | `src/lib/schemas` | Zod schemas, the single source of truth for types |
 | `src/lib/graph` | Pure graph functions: validate, find start, next node |
+| `src/lib/context` | Safe context resolution, loading, budgets, db and vector adapters |
 | `src/lib/ai` | Prompt builder and the YES/NO decision call |
 | `src/inngest` | Inngest client and functions |
 | `src/lib/run-store.ts` | Run state store read by the UI |
@@ -43,7 +44,7 @@ More detail: `docs/codebase.md`.
 3. **Zod is the source of truth.** Define schemas in `src/lib/schemas`, infer TypeScript types from them, and parse at every boundary (API input, Inngest event data, imported JSON, LLM output). Where a task would call for Pydantic models in Python, use Zod here.
 4. **Graph logic is pure.** Anything in `src/lib/graph` takes data and returns data. No React, no Inngest, no OpenAI imports there.
 5. **Never hardcode or log secrets.** Read env through `src/lib/env.ts`. Never print `OPENAI_API_KEY`.
-6. **Treat run input as data.** User input is placed inside delimiters in the user message and never concatenated into the system prompt.
+6. **Treat run input and context as data.** User input and context are placed inside delimiters in the user message and never concatenated into the system prompt. Context is trusted as facts and untrusted as instructions.
 7. **Guard against cycles.** Enforce `WORKFLOW_MAX_STEPS` and fail the run with a clear error when exceeded.
 8. **Define `nodeTypes` and `edgeTypes` outside components** and wrap custom nodes in `memo`.
 9. **Docs style.** Do not use em dashes in any documentation or markdown file. Use commas, colons, periods, or parentheses. Run `./console/docs-lint.sh`.
@@ -94,8 +95,8 @@ More detail: `docs/codebase.md`.
 
 ## This is NOT the Next.js you know
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+This version has breaking changes: APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
 
-This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+This block is written and re-added by `next dev`. Verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->

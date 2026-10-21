@@ -24,6 +24,11 @@ coverage/
 .data/
 .inngest/
 exports/
+/context/uploads/
+/context/private/
+/context/registry/*
+!/context/registry/examples/
+!/context/registry/examples/**
 
 # agent worktrees and scratch plans
 .worktrees/

@@ -73,6 +73,7 @@ Full details: [docs/architecture.md](docs/architecture.md) and [docs/codebase.md
 | 2 Foundations | 2 | Editable canvas, YES and NO edges, local persistence |
 | 3 Build (core) | 2 | End-to-end execution with AI branching |
 | 4 Build (polish) | 2 | Execution state, logs panel, JSON import and export, animated edges, error handling |
+| 5 Context retrieval | 3 | Per-node context files, database and vector interfaces, verified citations, import and preview |
 
 ## Working with coding agents
 

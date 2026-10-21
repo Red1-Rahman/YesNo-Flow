@@ -1,0 +1,8 @@
+{
+  "queries": {
+    "wallet-balance": {
+      "sql": "SELECT balance, currency FROM wallet WHERE id = ?",
+      "params": [1]
+    }
+  }
+}

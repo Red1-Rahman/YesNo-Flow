@@ -2,6 +2,8 @@ import { NonRetriableError } from "inngest"
 import { decide } from "@/lib/ai/decide"
 import { env } from "@/lib/env"
 import { safeMessage } from "@/lib/errors"
+import { UngroundedAnswerError } from "@/lib/errors"
+import { loadContext } from "@/lib/context/load"
 import { findNextEdge, getNode } from "@/lib/graph/traverse"
 import { appendStep, getRun, updateRun } from "@/lib/run-store"
 import { RunRequestedSchema } from "@/lib/schemas/events"
@@ -33,25 +35,34 @@ async function visitNode(params: {
   runId: string
   nodeId: string
   prompt: string
+  context: import("@/lib/schemas/context").NodeContext
   input: string
   visit: number
 }): Promise<Answer> {
-  const { runId, nodeId, prompt, input, visit } = params
+  const { runId, nodeId, prompt, context, input, visit } = params
   const startedAt = Date.now()
   const attempt = nextAttempt(runId, nodeId, visit)
   appendStep(runId, { nodeId, visit, attempt, status: "running", startedAt })
   try {
-    const answer = await decide({ prompt, input })
+    const loadedContext = await loadContext(context.sources, { prompt, input })
+    const decision = await decide({ prompt, input, context: loadedContext.loaded })
+    if (context.requireCitation && !decision.grounded) throw new UngroundedAnswerError()
+    const warnings = [...loadedContext.warnings]
+    if (!context.requireCitation && context.sources.length > 0 && !decision.grounded) warnings.push("Answer was not grounded in context")
     appendStep(runId, {
       nodeId,
       visit,
       attempt,
       status: "success",
-      answer,
+      answer: decision.answer,
+      citations: decision.citations,
+      grounded: decision.grounded,
+      warnings,
+      model: decision.model,
       startedAt,
       durationMs: Date.now() - startedAt,
     })
-    return answer
+    return decision.answer
   } catch (error) {
     appendStep(runId, {
       nodeId,
@@ -59,6 +70,7 @@ async function visitNode(params: {
       attempt,
       status: "error",
       error: safeMessage(error),
+      warnings: error instanceof Error && error.name === "RetryAfterError" ? ["rate limited, retrying"] : [],
       startedAt,
       durationMs: Date.now() - startedAt,
     })
@@ -116,6 +128,7 @@ export async function runWorkflowLoop(params: {
         runId,
         nodeId: current,
         prompt: node.data.prompt,
+        context: node.data.context,
         input,
         visit,
       }),
@@ -144,6 +157,7 @@ export const runWorkflow = inngest.createFunction(
   {
     id: "run-workflow",
     retries: 2,
+    concurrency: { limit: 1 },
     onFailure: async ({ event }) => {
       // The original event data is nested inside the failure event.
       const original = event.data.event?.data

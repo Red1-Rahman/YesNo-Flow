@@ -11,6 +11,9 @@ const step = (partial: Partial<StepRecord> & Pick<StepRecord, "nodeId" | "status
   visit: 1,
   attempt: 1,
   startedAt: 0,
+  citations: [],
+  grounded: false,
+  warnings: [],
   ...partial,
 })
 
@@ -19,9 +22,9 @@ const workflow: Workflow = {
   name: "test",
   startNodeId: "n-1",
   nodes: [
-    { id: "n-1", type: "decision", position: { x: 0, y: 0 }, data: { label: "Q", prompt: "Q?" } },
-    { id: "n-2", type: "decision", position: { x: 0, y: 0 }, data: { label: "Support", prompt: "S?" } },
-    { id: "n-3", type: "decision", position: { x: 0, y: 0 }, data: { label: "Sales", prompt: "B?" } },
+    { id: "n-1", type: "decision", position: { x: 0, y: 0 }, data: { label: "Q", prompt: "Q?", context: { sources: [], requireCitation: false } } },
+    { id: "n-2", type: "decision", position: { x: 0, y: 0 }, data: { label: "Support", prompt: "S?", context: { sources: [], requireCitation: false } } },
+    { id: "n-3", type: "decision", position: { x: 0, y: 0 }, data: { label: "Sales", prompt: "B?", context: { sources: [], requireCitation: false } } },
   ],
   edges: [
     { id: "e-yes", source: "n-1", target: "n-2", sourceHandle: "yes", type: "yes" },

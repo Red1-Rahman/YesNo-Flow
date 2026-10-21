@@ -1,5 +1,5 @@
 import { AppError } from "./errors"
-import { RunStateSchema, type RunState, type StepRecord } from "./schemas/run"
+import { RunStateSchema, type RunState, type StepRecordInput } from "./schemas/run"
 
 /**
  * In-memory run store backed by a Map on globalThis so it survives Next.js
@@ -34,10 +34,15 @@ export function createRun(initial: {
 }
 
 export function getRun(runId: string): RunState | undefined {
-  return runs.get(runId)
+  const run = runs.get(runId)
+  if (!run) return undefined
+  const parsed = RunStateSchema.safeParse(run)
+  if (!parsed.success) return undefined
+  runs.set(runId, parsed.data)
+  return parsed.data
 }
 
-export function appendStep(runId: string, step: StepRecord): RunState {
+export function appendStep(runId: string, step: StepRecordInput): RunState {
   const run = runs.get(runId)
   if (!run) {
     throw new AppError(`Run ${runId} was not found in the run store.`)

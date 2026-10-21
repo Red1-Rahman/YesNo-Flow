@@ -10,6 +10,7 @@ import { createRun, getRun } from "@/lib/run-store"
 import type { Workflow } from "@/lib/schemas/workflow"
 
 const decideMock = vi.mocked(decide)
+const decision = (answer: "YES" | "NO") => ({ answer, citations: [], grounded: false, model: "test-model" })
 
 /** A step runner that memoizes completed steps, like Inngest does. */
 function createFakeStep(): StepRunner & { executed: string[] } {
@@ -32,9 +33,9 @@ const yesNoWorkflow: Workflow = {
   name: "support or sales",
   startNodeId: "n-1",
   nodes: [
-    { id: "n-1", type: "decision", position: { x: 0, y: 0 }, data: { label: "Support request?", prompt: "Is this a support request?" } },
-    { id: "n-2", type: "decision", position: { x: 300, y: -100 }, data: { label: "Support node", prompt: "Product problem?" } },
-    { id: "n-3", type: "decision", position: { x: 300, y: 100 }, data: { label: "Sales node", prompt: "Buying or pricing?" } },
+    { id: "n-1", type: "decision", position: { x: 0, y: 0 }, data: { label: "Support request?", prompt: "Is this a support request?", context: { sources: [], requireCitation: false } } },
+    { id: "n-2", type: "decision", position: { x: 300, y: -100 }, data: { label: "Support node", prompt: "Product problem?", context: { sources: [], requireCitation: false } } },
+    { id: "n-3", type: "decision", position: { x: 300, y: 100 }, data: { label: "Sales node", prompt: "Buying or pricing?", context: { sources: [], requireCitation: false } } },
   ],
   edges: [
     { id: "e1", source: "n-1", target: "n-2", sourceHandle: "yes", type: "yes" },
@@ -47,8 +48,8 @@ const cyclicWorkflow: Workflow = {
   name: "cycle",
   startNodeId: "a",
   nodes: [
-    { id: "a", type: "decision", position: { x: 0, y: 0 }, data: { label: "A", prompt: "Is A?" } },
-    { id: "b", type: "decision", position: { x: 200, y: 0 }, data: { label: "B", prompt: "Is B?" } },
+    { id: "a", type: "decision", position: { x: 0, y: 0 }, data: { label: "A", prompt: "Is A?", context: { sources: [], requireCitation: false } } },
+    { id: "b", type: "decision", position: { x: 200, y: 0 }, data: { label: "B", prompt: "Is B?", context: { sources: [], requireCitation: false } } },
   ],
   edges: [
     { id: "e-ab", source: "a", target: "b", sourceHandle: "yes", type: "yes" },
@@ -67,14 +68,14 @@ describe("runWorkflowLoop", () => {
   it("follows the YES edge and ends at the node without a matching branch", async () => {
     const runId = uniqueRunId()
     createRun({ runId, input: "broken order" })
-    decideMock.mockResolvedValueOnce("YES").mockResolvedValueOnce("NO")
+    decideMock.mockResolvedValueOnce(decision("YES")).mockResolvedValueOnce(decision("NO"))
     const step = createFakeStep()
 
     const result = await runWorkflowLoop({ runId, workflow: yesNoWorkflow, input: "broken order", step, maxSteps: 25 })
 
     expect(result.outcomeNodeId).toBe("n-2")
     expect(step.executed).toEqual(["node:n-1:visit:1", "node:n-2:visit:1", "run:finish"])
-    expect(decideMock).toHaveBeenNthCalledWith(1, { prompt: "Is this a support request?", input: "broken order" })
+    expect(decideMock).toHaveBeenNthCalledWith(1, { prompt: "Is this a support request?", input: "broken order", context: [] })
     const run = getRun(runId)
     expect(run?.status).toBe("succeeded")
     expect(run?.outcomeNodeId).toBe("n-2")
@@ -89,19 +90,19 @@ describe("runWorkflowLoop", () => {
   it("follows the NO edge to the sales node", async () => {
     const runId = uniqueRunId()
     createRun({ runId, input: "pricing" })
-    decideMock.mockResolvedValueOnce("NO").mockResolvedValueOnce("YES")
+    decideMock.mockResolvedValueOnce(decision("NO")).mockResolvedValueOnce(decision("YES"))
     const step = createFakeStep()
 
     const result = await runWorkflowLoop({ runId, workflow: yesNoWorkflow, input: "pricing", step, maxSteps: 25 })
 
     expect(result.outcomeNodeId).toBe("n-3")
-    expect(decideMock).toHaveBeenNthCalledWith(1, { prompt: "Is this a support request?", input: "pricing" })
+    expect(decideMock).toHaveBeenNthCalledWith(1, { prompt: "Is this a support request?", input: "pricing", context: [] })
   })
 
   it("stops a cycle with a NonRetriableError at max steps", async () => {
     const runId = uniqueRunId()
     createRun({ runId, input: "loop" })
-    decideMock.mockResolvedValue("YES")
+    decideMock.mockResolvedValue(decision("YES"))
     const step = createFakeStep()
 
     await expect(
@@ -118,7 +119,7 @@ describe("runWorkflowLoop", () => {
   it("records each visit with a unique step id when a node repeats", async () => {
     const runId = uniqueRunId()
     createRun({ runId, input: "loop" })
-    decideMock.mockResolvedValue("YES")
+    decideMock.mockResolvedValue(decision("YES"))
     const step = createFakeStep()
 
     await expect(
@@ -145,10 +146,19 @@ describe("runWorkflowLoop", () => {
     expect(last?.error).not.toContain("secret details")
   })
 
+  it("fails a node that requires a citation when the answer is ungrounded", async () => {
+    const runId = uniqueRunId()
+    createRun({ runId, input: "x" })
+    decideMock.mockResolvedValueOnce(decision("NO"))
+    const workflow = { ...yesNoWorkflow, nodes: yesNoWorkflow.nodes.map((node) => node.id === "n-1" ? { ...node, data: { ...node.data, context: { sources: [], requireCitation: true } } } : node) }
+    await expect(runWorkflowLoop({ runId, workflow, input: "x", step: createFakeStep(), maxSteps: 25 })).rejects.toThrow(/verified context citation/)
+    expect(getRun(runId)?.steps.at(-1)).toMatchObject({ status: "error" })
+  })
+
   it("increments the attempt number on a retry of the same visit", async () => {
     const runId = uniqueRunId()
     createRun({ runId, input: "x" })
-    decideMock.mockRejectedValueOnce(new Error("transient")).mockResolvedValue("NO")
+    decideMock.mockRejectedValueOnce(new Error("transient")).mockResolvedValue(decision("NO"))
     const step = createFakeStep()
 
     // First invocation fails (the step runner does not memoize failures,
@@ -160,7 +170,7 @@ describe("runWorkflowLoop", () => {
     // Retry: the same visit runs again, now as attempt 2. Reset the mock so
     // the retried n-1 decision is deterministic (NO -> sales node).
     decideMock.mockReset()
-    decideMock.mockResolvedValueOnce("NO").mockResolvedValue("YES")
+    decideMock.mockResolvedValueOnce(decision("NO")).mockResolvedValue(decision("YES"))
     const result = await runWorkflowLoop({ runId, workflow: yesNoWorkflow, input: "x", step, maxSteps: 25 })
     expect(result.outcomeNodeId).toBe("n-3")
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef } from "react"
-import { AlertTriangle, Check, Loader2, X } from "lucide-react"
+import { AlertTriangle, Check, Loader2, X, Quote } from "lucide-react"
 import type { RunState, StepRecord } from "@/lib/schemas/run"
 import { answerBadgeClasses } from "@/lib/ui/status-colors"
 import { cn } from "@/lib/utils"
@@ -64,12 +64,14 @@ export const LogsPanel = ({ workflow, run }: LogsPanelProps) => {
           {visibleSteps.map((step) => {
             const { icon, text, className } = statusContent(step)
             const isSelected = selectedNodeId === step.nodeId
+            const nodeContext = workflow.nodes.find((item) => item.id === step.nodeId)?.data.context
+            const contextSources = nodeContext?.sources ?? []
             return (
               <li key={`${run.runId}:${step.nodeId}:${step.visit}:${step.attempt}`}>
                 <button
                   type="button"
                   onClick={() => setSelectedNodeId(step.nodeId)}
-                  title={`Select ${labelFor(step.nodeId)} on the canvas`}
+                  title={`Select ${labelFor(step.nodeId)} on the canvas${step.model ? `\nModel: ${step.model}` : ""}`}
                   className={cn(
                     "w-full rounded border bg-background px-2 py-1.5 text-left text-xs hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     isSelected && "ring-2 ring-primary",
@@ -82,6 +84,14 @@ export const LogsPanel = ({ workflow, run }: LogsPanelProps) => {
                       {text}
                     </span>
                   </span>
+                  {(step.citations.length > 0 || (step.status === "success" && contextSources.length > 0 && !step.grounded)) && <span className="mt-1 flex flex-wrap gap-1">
+                    {step.citations.map((citation, index) => {
+                      const label = contextSources.find((source) => source.id === citation.sourceId)?.label || citation.sourceId
+                      return <span key={`${citation.sourceId}:${index}`} title={citation.quote || "No verified quote"} className={cn("inline-flex items-center gap-1 rounded border px-1.5 py-0.5", citation.verified ? "border-muted text-muted-foreground" : "border-amber-600/40 bg-amber-600/10 text-amber-800 dark:text-amber-300")}><Quote className="h-3 w-3" aria-hidden="true" />{label}{!citation.verified && " · unverified"}</span>
+                    })}
+                    {step.status === "success" && contextSources.length > 0 && !step.grounded && <span className="inline-flex items-center gap-1 rounded border border-amber-600/40 bg-amber-600/10 px-1.5 py-0.5 text-amber-800 dark:text-amber-300"><AlertTriangle className="h-3 w-3" aria-hidden="true" />Ungrounded</span>}
+                  </span>}
+                  {step.warnings.map((warning, index) => <span key={index} className="mt-0.5 block text-amber-800 dark:text-amber-300">{warning}</span>)}
                   <span className="mt-0.5 flex items-center gap-2 text-muted-foreground">
                     <span>visit {step.visit}</span>
                     <span>attempt {step.attempt}</span>

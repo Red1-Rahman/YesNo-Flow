@@ -4,10 +4,11 @@ import type {
   EdgeVisualState,
   NodeVisualState,
 } from "./graph/derive-visual-state"
-import type { DecisionNodeSchema, WorkflowSchema } from "./schemas/workflow"
+import type { WorkflowSchema } from "./schemas/workflow"
+import type { NodeContext } from "./schemas/context"
 
 export type Workflow = z.infer<typeof WorkflowSchema>
-export type DecisionData = z.infer<typeof DecisionNodeSchema>["data"] & {
+export type DecisionData = { label: string; prompt: string; context?: NodeContext } & {
   /** Derived from the current run; never persisted to the store. */
   visualState?: NodeVisualState
 }

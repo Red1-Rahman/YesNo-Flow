@@ -1,0 +1,21 @@
+{
+  "id": "burger-budget",
+  "name": "Burger budget",
+  "startNodeId": "wallet-check",
+  "nodes": [
+    {
+      "id": "wallet-check",
+      "type": "decision",
+      "position": { "x": 0, "y": 0 },
+      "data": {
+        "label": "Wallet balance",
+        "prompt": "Is the wallet balance at least 100 BDT? If the balance is unknown, answer NO.",
+        "context": {
+          "sources": [{ "id": "wallet", "format": "json", "ref": "examples/wallet.json", "required": true }],
+          "requireCitation": true
+        }
+      }
+    }
+  ],
+  "edges": []
+}

@@ -10,13 +10,23 @@ const SAFE_ERROR_NAMES = new Set(["AppError", "NonRetriableError"])
  * leave the server, so logs and banners never expose provider details.
  */
 export class AppError extends Error {
-  constructor(message: string, options?: { cause?: unknown }) {
+  readonly code: string
+  constructor(message: string, options?: { cause?: unknown; code?: string }) {
     super(
       message,
       options?.cause !== undefined ? { cause: options.cause } : undefined,
     )
     this.name = "AppError"
+    this.code = options?.code ?? "APP_ERROR"
   }
+}
+
+export class ContextError extends AppError {
+  constructor(message: string, options?: { cause?: unknown }) { super(message, { ...options, code: "CONTEXT_ERROR" }); this.name = "ContextError" }
+}
+
+export class UngroundedAnswerError extends AppError {
+  constructor() { super("The answer was not supported by a verified context citation.", { code: "UNGROUNDED_ANSWER" }); this.name = "UngroundedAnswerError" }
 }
 
 /**

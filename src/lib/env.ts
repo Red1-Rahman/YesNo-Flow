@@ -5,7 +5,7 @@ const envSchema = z.object({
   // with a readable message instead of a crash. Enforced in /api/runs and
   // in the decision call.
   OPENAI_API_KEY: z.string().default(""),
-  OPENAI_BASE_URL: z.string().url().default("https://api.openai.com/v1"),
+  OPENAI_BASE_URL: z.preprocess((value) => value === "" ? undefined : value, z.string().url().optional()),
   OPENAI_MODEL: z.string().default("gpt-4o-mini"),
   INNGEST_DEV: z.string().default("1"),
   INNGEST_BASE_URL: z.string().default("http://localhost:8288"),
@@ -13,6 +13,12 @@ const envSchema = z.object({
   INNGEST_SIGNING_KEY: z.string().default(""),
   NEXT_PUBLIC_APP_URL: z.string().default("http://localhost:3000"),
   WORKFLOW_MAX_STEPS: z.coerce.number().int().positive().default(25),
+  CONTEXT_DIR: z.string().default("./context"),
+  CONTEXT_MAX_FILE_BYTES: z.coerce.number().int().positive().default(262144),
+  CONTEXT_MAX_SOURCE_CHARS: z.coerce.number().int().min(12).default(8000),
+  CONTEXT_MAX_TOTAL_CHARS: z.coerce.number().int().min(12).default(12000),
+  CONTEXT_UPLOADS_ENABLED: z.preprocess((value) => value === "" ? undefined : value, z.string().optional()),
+  LLM_STRUCTURED_OUTPUT: z.enum(["auto", "schema", "off"]).default("auto"),
 })
 
 export type Env = z.infer<typeof envSchema>

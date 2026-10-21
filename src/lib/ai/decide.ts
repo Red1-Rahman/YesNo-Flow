@@ -1,115 +1,54 @@
 import { OpenAI } from "openai"
-import { z } from "zod"
+import { RetryAfterError } from "inngest"
 import { env } from "../env"
 import { AppError } from "../errors"
-import { AnswerSchema } from "../schemas/workflow"
+import type { LoadedContext, ModelCitation } from "../schemas/context"
 import { DECISION_SYSTEM_PROMPT, buildUserMessage } from "./prompt"
+import { extractDecision } from "./extract-decision"
+import { verifyCitations } from "./verify-citations"
 
-const DecisionResponseSchema = z.object({ answer: AnswerSchema }).strict()
-
-const decisionJsonSchema = {
-  type: "object",
-  properties: { answer: { type: "string", enum: ["YES", "NO"] } },
-  required: ["answer"],
-  additionalProperties: false,
-} as const
-
+const decisionJsonSchema = { type: "object", properties: { answer: { type: "string", enum: ["YES", "NO"] }, citations: { type: "array", maxItems: 10, items: { type: "object", properties: { sourceId: { type: "string" }, quote: { type: "string", maxLength: 240 } }, required: ["sourceId", "quote"], additionalProperties: false } } }, required: ["answer", "citations"], additionalProperties: false } as const
 let client: OpenAI | undefined
-
-function getClient(): OpenAI {
-  if (!env.OPENAI_API_KEY) {
-    throw new AppError(
-      "OPENAI_API_KEY is not configured on the server. Add it to .env.local and restart the app.",
-    )
-  }
-  client ??= new OpenAI({
-    apiKey: env.OPENAI_API_KEY,
-    baseURL: env.OPENAI_BASE_URL,
-  })
+function getClient() {
+  if (!env.OPENAI_API_KEY) throw new AppError("OPENAI_API_KEY is not configured on the server. Add it to .env.local and restart the app.")
+  client ??= new OpenAI({ apiKey: env.OPENAI_API_KEY, baseURL: env.OPENAI_BASE_URL })
   return client
 }
+const statusOf = (error: unknown) => typeof error === "object" && error !== null && "status" in error && typeof error.status === "number" ? error.status : undefined
+const retryAfterOf = (error: unknown) => typeof error === "object" && error !== null && "headers" in error ? (error.headers as Headers).get?.("retry-after") : null
 
-// Log the error kind only. Provider messages can echo parts of the API key,
-// so they must never reach logs or users.
-function describeProviderError(error: unknown): string {
-  if (!(error instanceof Error)) return "unknown error"
-  const status = (error as { status?: unknown }).status
-  return typeof status === "number"
-    ? `${error.name} (status ${status})`
-    : error.name
-}
-
-export async function decide({
-  prompt,
-  input,
-}: {
-  prompt: string
-  input: string
-}): Promise<"YES" | "NO"> {
+export async function decide({ prompt, input, context = [], signal }: { prompt: string; input: string; context?: LoadedContext[]; signal?: AbortSignal }): Promise<{ answer: "YES" | "NO"; citations: ReturnType<typeof verifyCitations>["citations"]; grounded: boolean; model: string }> {
   const openai = getClient()
-
-  let raw: string | null
+  const base = { model: env.OPENAI_MODEL, temperature: 0, max_tokens: 400, messages: [{ role: "system" as const, content: DECISION_SYSTEM_PROMPT }, { role: "user" as const, content: buildUserMessage({ prompt, input, context }) }] }
+  const request = (withSchema: boolean) => openai.chat.completions.create({ ...base, ...(withSchema ? { response_format: { type: "json_schema" as const, json_schema: { name: "DecisionResult", schema: decisionJsonSchema, strict: true as const } } } : {}) }, { signal })
+  let response
   try {
-    const completion = await openai.chat.completions.create({
-      model: env.OPENAI_MODEL,
-      temperature: 0,
-      messages: [
-        { role: "system", content: DECISION_SYSTEM_PROMPT },
-        { role: "user", content: buildUserMessage({ prompt, input }) },
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "Answer",
-          schema: decisionJsonSchema,
-          strict: true,
-        },
-      },
-    })
-    raw = completion.choices[0]?.message.content ?? null
-  } catch (error) {
-    console.error("[decide] provider call failed:", describeProviderError(error))
-    throw new AppError(
-      "The model request failed. Check the server configuration and try again.",
-      { cause: error },
-    )
-  }
-
-  if (!raw) {
-    throw new AppError(
-      "The model returned an empty response. The step will be retried.",
-    )
-  }
-
-  // Some OpenAI-compatible endpoints (for example OpenRouter free models)
-  // ignore response_format and answer in plain text. Strip markdown code
-  // fences, then accept a bare YES or NO. Both paths still end in the same
-  // Zod check, so anything that is not exactly YES or NO throws.
-  const normalized = raw
-    .trim()
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/\s*```$/, "")
-    .trim()
-
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(normalized)
-  } catch {
-    const bare = AnswerSchema.safeParse(normalized.toUpperCase())
-    if (bare.success) {
-      return bare.data
+    if (env.LLM_STRUCTURED_OUTPUT === "off") response = await request(false)
+    else {
+      try { response = await request(true) }
+      catch (error) {
+        const status = statusOf(error)
+        if (env.LLM_STRUCTURED_OUTPUT !== "auto" || !status || status < 400 || status >= 500 || [401, 403, 429].includes(status)) throw error
+        response = await request(false)
+      }
     }
-    throw new AppError(
-      "The model returned an answer that is not YES or NO. The step will be retried.",
-    )
+  } catch (error) {
+    const status = statusOf(error)
+    console.error("[decide] provider call failed:", status ? `HTTP ${status}` : error instanceof Error ? error.name : "unknown error")
+    if (status === 429) {
+      const header = retryAfterOf(error)
+      const retryAfter = header && Number.isFinite(Number(header))
+        ? Math.max(1000, Number(header) * 1000)
+        : header && !Number.isNaN(Date.parse(header))
+          ? new Date(header)
+          : header || 60_000
+      throw new RetryAfterError("The model provider is rate limited.", retryAfter, { cause: error })
+    }
+    throw new AppError("The model request failed. Check the server configuration and try again.", { cause: error })
   }
-
-  const result = DecisionResponseSchema.safeParse(parsed)
-  if (!result.success) {
-    throw new AppError(
-      "The model returned an answer that is not YES or NO. The step will be retried.",
-      { cause: result.error },
-    )
-  }
-  return result.data.answer
+  const raw = response.choices[0]?.message.content
+  if (!raw) throw new AppError("The model returned an empty response. The step will be retried.")
+  const result = extractDecision(raw)
+  const verified = context.length ? verifyCitations(result.citations as ModelCitation[], context) : { citations: [], grounded: false }
+  return { answer: result.answer, ...verified, model: response.model }
 }

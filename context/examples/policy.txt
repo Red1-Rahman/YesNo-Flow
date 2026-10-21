@@ -1,0 +1,1 @@
+If a required fact is unknown, use the decision question's tie-break rule.

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { inngest } from "@/inngest/client"
+import { loadContext } from "@/lib/context/load"
 import { env } from "@/lib/env"
 import { validateWorkflow } from "@/lib/graph/validate"
 import { createRun, updateRun } from "@/lib/run-store"
@@ -33,6 +34,15 @@ export async function POST(request: Request) {
     return errorResponse("Invalid workflow graph.", 400, validation.issues)
   }
 
+  const missing: { nodeId: string; sourceId: string }[] = []
+  for (const node of workflow.nodes) {
+    for (const source of node.data.context.sources.filter((item) => item.required)) {
+      try { await loadContext([source], { prompt: node.data.prompt, input }) }
+      catch { missing.push({ nodeId: node.id, sourceId: source.id }) }
+    }
+  }
+  if (missing.length) return NextResponse.json({ error: "Required context sources are missing or invalid.", missing }, { status: 400 })
+
   if (!env.OPENAI_API_KEY) {
     return errorResponse(
       "OPENAI_API_KEY is not configured on the server. Add it to .env.local and restart the app.",
@@ -50,7 +60,7 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     // Raw transport errors stay in server logs; the client gets a safe message.
-    console.error("[api/runs] failed to send workflow/run.requested:", error)
+    console.error("[api/runs] failed to send workflow/run.requested:", error instanceof Error ? error.name : "unknown error")
     updateRun(runId, {
       status: "failed",
       error: "Could not queue the run. Is the Inngest dev server running?",
