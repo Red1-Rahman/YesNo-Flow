@@ -4,10 +4,10 @@ import { env } from "../env"
 import { AppError } from "../errors"
 import type { LoadedContext, ModelCitation } from "../schemas/context"
 import { DECISION_SYSTEM_PROMPT, buildUserMessage } from "./prompt"
+import { DECISION_JSON_SCHEMA } from "./decision-schema"
 import { extractDecision } from "./extract-decision"
 import { verifyCitations } from "./verify-citations"
 
-const decisionJsonSchema = { type: "object", properties: { answer: { type: "string", enum: ["YES", "NO"] }, citations: { type: "array", maxItems: 10, items: { type: "object", properties: { sourceId: { type: "string" }, quote: { type: "string", maxLength: 240 } }, required: ["sourceId", "quote"], additionalProperties: false } } }, required: ["answer", "citations"], additionalProperties: false } as const
 let client: OpenAI | undefined
 function getClient() {
   if (!env.OPENAI_API_KEY) throw new AppError("OPENAI_API_KEY is not configured on the server. Add it to .env.local and restart the app.")
@@ -20,7 +20,7 @@ const retryAfterOf = (error: unknown) => typeof error === "object" && error !== 
 export async function decide({ prompt, input, context = [], signal }: { prompt: string; input: string; context?: LoadedContext[]; signal?: AbortSignal }): Promise<{ answer: "YES" | "NO"; citations: ReturnType<typeof verifyCitations>["citations"]; grounded: boolean; model: string }> {
   const openai = getClient()
   const base = { model: env.OPENAI_MODEL, temperature: 0, max_tokens: 400, messages: [{ role: "system" as const, content: DECISION_SYSTEM_PROMPT }, { role: "user" as const, content: buildUserMessage({ prompt, input, context }) }] }
-  const request = (withSchema: boolean) => openai.chat.completions.create({ ...base, ...(withSchema ? { response_format: { type: "json_schema" as const, json_schema: { name: "DecisionResult", schema: decisionJsonSchema, strict: true as const } } } : {}) }, { signal })
+  const request = (withSchema: boolean) => openai.chat.completions.create({ ...base, ...(withSchema ? { response_format: { type: "json_schema" as const, json_schema: { name: "DecisionResult", schema: DECISION_JSON_SCHEMA, strict: true as const } } } : {}) }, { signal })
   let response
   try {
     if (env.LLM_STRUCTURED_OUTPUT === "off") response = await request(false)
@@ -29,6 +29,8 @@ export async function decide({ prompt, input, context = [], signal }: { prompt: 
       catch (error) {
         const status = statusOf(error)
         if (env.LLM_STRUCTURED_OUTPUT !== "auto" || !status || status < 400 || status >= 500 || [401, 403, 429].includes(status)) throw error
+        // Metadata only. Without this, a provider that rejects the schema silently disables enforcement.
+        console.warn(`[decide] structured output rejected (HTTP ${status}), retrying once without response_format`)
         response = await request(false)
       }
     }

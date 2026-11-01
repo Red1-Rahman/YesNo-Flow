@@ -79,7 +79,7 @@ export const FlowCanvas = ({ run }: FlowCanvasProps) => {
   const onNodeClick: NodeMouseHandler<DecisionNode> = useCallback((_event, node) => setSelectedNodeId(node.id), [setSelectedNodeId])
 
   return (
-    <div className="relative h-[calc(100vh-4rem)] min-h-[560px] w-full overflow-hidden rounded-lg border bg-background">
+    <div className="relative h-[min(70dvh,560px)] min-h-[420px] w-full overflow-hidden rounded-lg border bg-background lg:h-full lg:min-h-0">
       <ReactFlow<DecisionNode, BranchEdge>
         nodes={displayNodes}
         edges={displayEdges}

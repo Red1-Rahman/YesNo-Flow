@@ -27,7 +27,7 @@ export const DecisionNodeView = memo(function DecisionNodeView({ id, data, selec
     <div
       data-status={visualState}
       className={cn(
-        "min-w-48 rounded-lg border bg-card p-3 transition-colors",
+        "w-64 min-w-0 max-w-64 overflow-hidden rounded-lg border bg-card p-3 transition-colors",
         nodeStateClasses[visualState],
         selected && "ring-2 ring-primary",
       )}
@@ -35,13 +35,13 @@ export const DecisionNodeView = memo(function DecisionNodeView({ id, data, selec
       <Handle type="target" position={Position.Top} />
       {isStart && <span className="mb-1 inline-block rounded bg-primary px-2 py-0.5 text-xs text-primary-foreground">Start</span>}
       <div className="flex items-start justify-between gap-2">
-        <p className="text-sm font-medium">{data.label || "Decision"}</p>
+        <p className="min-w-0 truncate text-sm font-medium" title={data.label || "Decision"}>{data.label || "Decision"}</p>
         {visualState === "running" && <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-blue-700 dark:text-blue-400" aria-label="Running" />}
         {visualState === "success-yes" && <Check className="h-3.5 w-3.5 shrink-0 text-green-700 dark:text-green-400" aria-label="Answered YES" />}
         {visualState === "success-no" && <X className="h-3.5 w-3.5 shrink-0 text-red-700 dark:text-red-400" aria-label="Answered NO" />}
         {visualState === "error" && <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-700 dark:text-amber-500" aria-label="Error" />}
       </div>
-      <p className="line-clamp-3 text-xs text-muted-foreground">{data.prompt}</p>
+      <p className="line-clamp-3 break-words text-xs text-muted-foreground" title={data.prompt}>{data.prompt}</p>
       {badge.text && (
         <span className={cn("mt-2 inline-block rounded border px-1.5 py-0.5 text-xs font-medium", badge.className)}>
           {badge.text}
