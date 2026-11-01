@@ -52,7 +52,7 @@ export default function Home() {
   )
 
   return (
-    <main className="min-h-screen bg-background p-4 text-foreground sm:p-6">
+    <main className="min-h-dvh bg-background p-4 text-foreground sm:p-6 lg:flex lg:h-dvh lg:flex-col lg:overflow-hidden">
       <Toaster position="top-right" richColors closeButton />
       <header className="mb-4 flex items-end justify-between gap-4">
         <div>
@@ -60,11 +60,11 @@ export default function Home() {
           <p className="text-sm text-muted-foreground">Build a decision flow with YES and NO branches.</p>
         </div>
       </header>
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-        <div className="min-w-0 flex-1">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row lg:items-stretch">
+        <div className="min-h-0 min-w-0 flex-1">
           <FlowCanvas run={run} />
         </div>
-        <aside className="flex w-full flex-col gap-4 lg:w-96">
+        <aside className="flex w-full min-h-0 flex-col gap-4 lg:h-full lg:w-96">
           <RunPanel
             workflow={workflow}
             run={run}

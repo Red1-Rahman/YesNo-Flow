@@ -8,6 +8,16 @@ A visual AI workflow builder. Every node is an AI decision step that answers **Y
    NO  -> Sales node
 ```
 
+## Screenshots
+
+![yesno-flow homepage showing the visual decision canvas, branching YES and NO edges, run input, and logs panel](./public/yesno-flow.png)
+
+*The yesno-flow homepage combines the React Flow canvas, workflow controls, run input, and execution logs in one view.*
+
+![yesno-flow execution logs showing verified source citations and readable retry errors](./public/logs.png)
+
+*Execution logs make each step easy to debug by showing the answer, source retrieval, model timing, retry attempts, and clear error messages.*
+
 ## Stack
 
 | Concern | Choice |
